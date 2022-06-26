@@ -36,18 +36,18 @@ class ModemConnection:
         self.transport = transport
         self.commands = [
             'AT+CFUN=1',
-			'AT+CMEE=2',
-			'AT+XLEC=1',
-			'AT+CGPIAF=1,0,0,0',
-			'AT+XDNS=1,1',
-			'AT+CGDCONT=1,"IP","internet.kpn.de"',
-			'AT+CGACT=1,1',
-			'AT+CGPADDR=1',
-			'AT+XDATACHANNEL=1,1,"/USBCDC/0","/USBHS/NCM/0",2,1',
-			'AT+CGDATA="M-RAW_IP",1',
-			'AT+CNMI=2,2',
-			'AT+CMGF=1'
-		]
+            'AT+CMEE=2',
+            'AT+XLEC=1',
+            'AT+CGPIAF=1,0,0,0',
+            'AT+XDNS=1,1',
+            'AT+CGDCONT=1,"IP","internet.kpn.de"',
+            'AT+CGACT=1,1',
+            'AT+CGPADDR=1',
+            'AT+XDATACHANNEL=1,1,"/USBCDC/0","/USBHS/NCM/0",2,1',
+            'AT+CGDATA="M-RAW_IP",1',
+            'AT+CNMI=2,2',
+            'AT+CMGF=1'
+        ]
 
     @property
     def sim_mode(self):
