@@ -52,7 +52,7 @@ class ModemConnection:
     @property
     def sim_mode(self):
         # returns cfun mode
-        pass
+        raise NotImplementedError
 
     def initialize(self):
         while not self.transport.operating:
@@ -77,7 +77,7 @@ class ModemConnection:
         # Then it will click once more
         
         # This will happen via an remote adb connection
-        raise NotImplementedError('This method is not implemented yet')
+        raise NotImplementedError
                 
     def recvieved_message(self, msg):
         if not msg:
