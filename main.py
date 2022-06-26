@@ -120,7 +120,6 @@ class ModemConnection:
 
         logging.debug(msg)
 
-
 class SerialModem:
     def __init__(self, path, baudrate, timeout=0.1):
         self.path = path
@@ -158,7 +157,6 @@ class SerialModem:
         while True:
             try:
                 data = self.transport.readline().decode()
-
             except serial.serialutil.SerialException:
                 self.close_connection()
                 break
