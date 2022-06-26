@@ -82,24 +82,27 @@ class ModemConnection:
     def recvieved_message(self, msg):
         if not msg:
             return None
+        
+        if not self.transport.operating:
+            if '+CGPADDR: 1,' in msg:
+                ipv4_search = IPV4_PATTERN.search(msg)
 
-        if '+CGPADDR: 1,' in msg:
-            ipv4_search = IPV4_PATTERN.search(msg)
+                if ipv4_search is not None:
+                    ipv4_address = ipv4_search.group(0)
+                    if ipv4_address == '0.0.0.0':
+                        return None
 
-            if ipv4_search is not None:
-                ipv4_address = ipv4_search.group(0)
-                if ipv4_address == '0.0.0.0':
-                    return None
+                    iproute2_set_network_address(ipv4_address)
+                    logging.info('modem nat ipv4 address: ({})'.format(ipv4_address))
+        
+                    self.transport.operating = True
+                    logging.info('Modem is operational')
 
-                iproute2_set_network_address(ipv4_address)
-                logging.info('modem nat ipv4 address: ({})'.format(ipv4_address))
-    
-                self.transport.operating = True
-                logging.info('Modem is operational')
+            # We are still not in a operating state no need to listen for events
+            return None
 
         if 'NO CARRIER' in msg:
-            # We should enter flight mode to diconnecurselfs on band level
-            # And reconnect to the towsers and repeat the previous process from scratch
+            # We should switch to flightmode and disconnect to then reinitiate connection
             logging.warning('carrier lost entering flight mode')
             self.transport.send('AT+CFUN=4')
             self.transport.operating = False
@@ -108,7 +111,6 @@ class ModemConnection:
         if 'activeren?' in msg:
             # We got an message saying we went though our data
             # We can send 10 messages to get a total of 20 gigs without opening their application on a phone
-            
             logging.info('no more data requesting more') 
             self.sms_get_more_data()
         
