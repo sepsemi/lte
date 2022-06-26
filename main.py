@@ -3,13 +3,19 @@ import os
 import sys
 import time
 import serial
+import logging
 
 IPV4_PATTERN = re.compile(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})')
 LTE_INTEFACE = 'eth1'
-WAN_DEFAULT_GATEWAY = '192.168.1.1'
+WAN_DEFAULT_GATEWAY = '192.168.0.1'
 
 SERIAL_PATH = sys.argv[1]
 
+# Setup basic logging config
+logging.basicConfig(
+        format='[%(asctime)-8s][%(funcName)-8s()] %(levelname)s: %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 def iproute2_set_network_address(address):
     # iptoute2 ip addr flush deletes default routes too
@@ -30,18 +36,17 @@ class ModemConnection:
         self.transport = transport
         self.commands = [
             'AT+CFUN=1',
-            'AT+CMEE=2',
-            'AT+COPS=0',
-            'AT+XLEC=1',
-            'AT+CGPIAF=1,0,0,0',
-            'AT+XDNS=1,1',
-            'AT+CGDCONT=1,"IP","internet.kpn.nl"',
-            'AT+CGACT=1,1',
-            'AT+CGPADDR=1',
-            'AT+XDATACHANNEL=1,1,"/USBCDC/0","/USBHS/NCM/0",2,1',
-            'AT+CGDATA="M-RAW_IP",1',
-            'AT+CNMI=2,2',
-            'AT+CMGF=1'
+			'AT+CMEE=2',
+			'AT+XLEC=1',
+			'AT+CGPIAF=1,0,0,0',
+			'AT+XDNS=1,1',
+			'AT+CGDCONT=1,"IP","internet.kpn.de"',
+			'AT+CGACT=1,1',
+			'AT+CGPADDR=1',
+			'AT+XDATACHANNEL=1,1,"/USBCDC/0","/USBHS/NCM/0",2,1',
+			'AT+CGDATA="M-RAW_IP",1',
+			'AT+CNMI=2,2',
+			'AT+CMGF=1'
 		]
 
     @property
@@ -50,16 +55,21 @@ class ModemConnection:
         pass
 
     def initialize(self):
-        for command in self.commands:
+        while not self.transport.operating:
+            for command in self.commands:
+                self.transport.send(command)
+                self.recvieved_message(self.transport.receive(4))
+ 
+    def sms_get_more_data(self):       
+        # We can send 10 messages to get a total of 20 gigs without opening their application on a phone
+        logging.debug('sending sms to carrier to get more data')
+        
+        for command in ['AT+CMGS="1280",129', 'NOG 1GB','\x1A']:
             self.transport.send(command)
-            self.recvieved_message(self.transport.receive(4))
-
-        # Set modem operating state to True
-        self.transport.operating = True
-            
+                
     def recvieved_message(self, msg):
-        msg = msg.strip()
-
+        if not msg:
+            return None
 
         if '+CGPADDR: 1,' in msg:
             ipv4_search = IPV4_PATTERN.search(msg)
@@ -70,23 +80,31 @@ class ModemConnection:
                     return None
 
                 iproute2_set_network_address(ipv4_address)
+                logging.info('modem nat ipv4 address: ({})'.format(ipv4_address))
+    
+                self.transport.operating = True
+                logging.info('Modem is operational')
 
         if 'NO CARRIER' in msg:
-            # We should enter flight mode to diconnect ourselfs on band level
+            # We should enter flight mode to diconnecurselfs on band level
             # And reconnect to the towsers and repeat the previous process from scratch
-            
-            print('CARRIER IS LOST NOT RESETTING')
+            logging.warning('carrier lost entering flight mode')
+            self.transport.send('AT+CFUN=4')
+            self.transport.operating = False
+            self.initialize()
 
         if 'activeren?' in msg:
             # We got an message saying we went though our data
             # We can send 10 messages to get a total of 20 gigs without opening their application on a phone
             
-            print('Automatic action: SEND SMS for more data')
+            logging.info('no more data requesting more') 
+            self.sms_get_more_data()
+        
+        # Carrier agregation/cell info
+        if '+XLECI:' in msg:
+            logging.debug(msg[msg.find('+XLECI:'):])
 
-            for command in ['AT+CMGS="1280",129', 'NOG 1GB','\x1A']:
-                self.transport.send(command)
-                print(self.transport.receive())
-
+        logging.debug(msg)
 
 
 class SerialModem:
@@ -110,7 +128,7 @@ class SerialModem:
         self.transport.close()
  
     def send(self, data):
-        # Send if serial opened
+        self.transport.flush()
         formated = '{}{}'.format(data, '\r\n')
         self.transport.write(formated.encode())
 
@@ -144,7 +162,7 @@ class SerialModem:
             # Return read buffer instantly in operating mode
             if self.operating:
                 return buffer
-            
+                 
 def main():
     modem = SerialModem(SERIAL_PATH, 115200, timeout=1)
     while True:
