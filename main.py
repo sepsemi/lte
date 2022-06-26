@@ -66,6 +66,18 @@ class ModemConnection:
         
         for command in ['AT+CMGS="1280",129', 'NOG 1GB','\x1A']:
             self.transport.send(command)
+
+    def adb_interact_more_data(self):
+        # What this should do is open an application
+        # Click something in the application (random location) 
+        # Then click on the button it is supposed to
+        # The its going to click on a button again after waiting x seconds
+        # Then its going to swipe from x to y in pos x and z in 150 miliseconds
+        # Then its going to click a button
+        # Then it will click once more
+        
+        # This will happen via an remote adb connection
+        raise NotImplementedError('This method is not implemented yet')
                 
     def recvieved_message(self, msg):
         if not msg:
