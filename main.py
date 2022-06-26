@@ -172,11 +172,7 @@ class SerialModem:
 
             if lines_buffered >= 2:
                 return buffer
-            
-            # Return read buffer instantly in operating mode
-            if self.operating:
-                return buffer
-                 
+
 def main():
     modem = SerialModem(SERIAL_PATH, 115200, timeout=1)
     while True:
