@@ -2,7 +2,6 @@ import os
 import re
 import time
 import logging
-import contextlib
 from serial import Serial, SerialException
 
 LTE_INTEFACE = 'eth1'
